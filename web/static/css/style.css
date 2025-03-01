@@ -1,0 +1,120 @@
+/* Single cursor style definition - make it absolutely positioned */
+.cursor {
+  display: none; /* Hide the old cursor implementation */
+}
+
+/* Text color classes with consistent font properties */
+.text-white, .text-red-500, .text-gray-300 {
+  font-size: 1rem !important;
+  font-weight: normal !important;
+  font-family: monospace !important;
+  line-height: 1.5 !important;
+  letter-spacing: normal !important;
+}
+
+.text-white {
+  color: white;
+}
+
+.text-red-500 {
+  color: #ef4444;
+}
+
+.text-gray-300 {
+  color: #d1d5db;
+}
+
+/* Make sure the contenteditable element doesn't show its own cursor */
+[contenteditable] {
+  caret-color: transparent !important; /* Hide the default caret */
+  outline: none;
+  min-height: 100px;
+  cursor: default !important; /* Force default cursor */
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  font-family: monospace !important;
+  font-weight: normal !important;
+  letter-spacing: normal !important;
+  position: relative; /* For absolute positioning of cursor */
+}
+
+[contenteditable]:focus {
+  outline: none;
+}
+
+/* Additional rule to ensure cursor is hidden and text is consistent */
+#text-display {
+  caret-color: transparent !important;
+  cursor: default !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  font-family: monospace !important;
+  font-weight: normal !important;
+  letter-spacing: normal !important;
+  white-space: pre-wrap;
+  position: relative; /* For absolute positioning of cursor */
+}
+
+/* Ensure spans inside text display have consistent styling */
+#text-display span {
+  font-size: 1rem !important;
+  font-weight: normal !important;
+  font-family: monospace !important;
+  line-height: 1.5 !important;
+  letter-spacing: normal !important;
+}
+
+/* Ensure the typing text container has consistent styling */
+#typing-text {
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  font-family: monospace !important;
+  font-weight: normal !important;
+  letter-spacing: normal !important;
+  position: relative; /* For absolute positioning of cursor */
+}
+
+/* Improved cursor implementation */
+.cursor-position {
+  position: relative;
+  color: #d1d5db; /* text-gray-300 equivalent */
+}
+
+.cursor-position::before {
+  content: '';
+  position: absolute;
+  left: -2px; /* Position it just before the character */
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background-color: rgba(156, 163, 175, 0.7); /* Lighter gray cursor with transparency */
+  animation: blink 1s step-end infinite;
+  transition: left 0.15s ease-out, top 0.15s ease-out; /* Smooth transition when moving */
+}
+
+/* Fix cursor styling and positioning */
+#typing-cursor {
+  position: absolute;
+  width: 2px; /* Thin line */
+  height: 1.2em;
+  background-color: rgba(156, 163, 175, 0.7); /* Lighter gray cursor with transparency */
+  animation: blink 1s step-end infinite;
+  z-index: 10;
+  transition: left 0.15s ease-out, top 0.15s ease-out; /* Smooth transition when moving */
+  display: inline-block; /* Use inline-block instead of block */
+  margin: 0; /* Remove any margin */
+  padding: 0; /* Remove any padding */
+  vertical-align: baseline; /* Align with text baseline */
+  transform: translateY(0); /* Reset the transform */
+}
+
+/* When typing, stop the blinking animation */
+#typing-cursor.typing {
+  animation: none;
+  opacity: 1;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+} 
