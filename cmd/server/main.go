@@ -30,8 +30,14 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
-	// Initialize text generator
-	generator := llm.NewTextGenerator("")
+	// Update the generator initialization in main.go
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		fmt.Println("Warning: GEMINI_API_KEY environment variable not set. Using fallback text generation.")
+	} else {
+		fmt.Printf("Using Gemini API with key: %s...\n", apiKey[:5]+"...") // Only show first few chars
+	}
+	generator := llm.NewTextGenerator(apiKey)
 
 	// Create handler with dependencies
 	h := handlers.NewHandler(database, generator)

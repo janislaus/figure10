@@ -95,6 +95,20 @@ function initTyping() {
             cursor.classList.remove('typing');
         }, typingDelay);
         
+        // Handle Escape key to end the session
+        if (e.key === 'Escape') {
+            console.log("Escape pressed, ending session");
+            if (isSessionActive) {
+                isSessionActive = false;
+                stopTimer();
+                submitResult();
+                
+                // Show completion message
+                showCompletionMessage("Session ended with Escape key");
+            }
+            return;
+        }
+        
         // If session is not active, start it on the first key press
         if (!isSessionActive && e.key.length === 1) {
             console.log("Starting session");
@@ -128,9 +142,13 @@ function initTyping() {
             
             // Check if we've completed the text
             if (typedText.length >= originalText.length) {
+                console.log("Text completed, ending session");
                 isSessionActive = false;
                 stopTimer();
                 submitResult();
+                
+                // Show completion message
+                showCompletionMessage("Great job! You've completed the text.");
             }
         }
     });
@@ -153,18 +171,54 @@ function initTyping() {
     function updateDisplay(currentInput) {
         let displayHTML = '';
         
+        // Track the current word
+        let currentWord = '';
+        let wordStartIndex = 0;
+        let wordWithError = false;
+        
         for (let i = 0; i < originalText.length; i++) {
+            // Track words by looking for spaces or newlines
+            if (i === 0 || originalText[i-1] === ' ' || originalText[i-1] === '\n') {
+                wordStartIndex = i;
+                currentWord = '';
+                wordWithError = false;
+            }
+            
+            // Build the current word
+            if (originalText[i] !== ' ' && originalText[i] !== '\n') {
+                currentWord += originalText[i];
+            }
+            
             if (i < currentInput.length) {
                 if (currentInput[i] === originalText[i]) {
                     // Correct character
                     displayHTML += `<span class="text-white">${originalText[i]}</span>`;
                 } else {
-                    // Incorrect character
+                    // Incorrect character - mark the word as having an error
                     displayHTML += `<span class="text-red-500 bg-red-900">${originalText[i]}</span>`;
+                    
+                    // Mark this word as having an error
+                    wordWithError = true;
+                    
+                    // Add error details
+                    errorDetails.push({
+                        expected_char: originalText[i],
+                        typed_char: currentInput[i],
+                        position: i
+                    });
                 }
             } else {
                 // Not yet typed
                 displayHTML += `<span class="text-gray-300">${originalText[i]}</span>`;
+            }
+            
+            // If we reach a space, newline, or end of text, we've completed a word
+            if (originalText[i] === ' ' || originalText[i] === '\n' || i === originalText.length - 1) {
+                // If this word had an error and it's not empty, add it to the set
+                if (wordWithError && currentWord.trim().length > 0) {
+                    wordsWithErrors.add(currentWord.trim());
+                    console.log("Added word with error:", currentWord.trim());
+                }
             }
         }
         
@@ -229,10 +283,8 @@ function initTyping() {
     
     // Function to update metrics
     function updateMetrics() {
-        if (!isSessionActive || !startTime) return;
-        
         // Calculate WPM
-        const elapsedTime = (new Date() - startTime) / 1000 / 60; // in minutes
+        const elapsedTime = startTime ? (new Date() - startTime) / 1000 / 60 : 0; // in minutes
         let wpm = 0;
         if (elapsedTime > 0) {
             wpm = (typedText.length / 5) / elapsedTime;
@@ -327,6 +379,157 @@ function initTyping() {
         })
         .catch(error => {
             console.error("Error submitting result:", error);
+        });
+    }
+    
+    // Function to show completion message
+    function showCompletionMessage(message) {
+        // Create a completion message element
+        const completionMessage = document.createElement('div');
+        completionMessage.className = 'bg-green-800 text-white p-4 rounded-lg mt-4 text-center';
+        
+        // Basic completion info
+        let completionHTML = `
+            <p class="font-bold mb-2">${message}</p>
+            <p>WPM: ${document.getElementById('wpm').textContent} | 
+               Accuracy: ${document.getElementById('accuracy').textContent} | 
+               Errors: ${document.getElementById('errors').textContent}</p>
+        `;
+        
+        // If there were errors, add option to practice mistake words
+        if (errorCount > 0 && wordsWithErrors.size > 0) {
+            const errorWordsList = Array.from(wordsWithErrors);
+            
+            completionHTML += `
+                <div class="mt-4 p-3 bg-gray-700 rounded-lg">
+                    <p class="font-bold mb-2">You made mistakes in these words:</p>
+                    <p class="mb-3">${errorWordsList.join(', ')}</p>
+                    <button 
+                        id="practice-mistakes-btn"
+                        class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded transition mr-2"
+                    >
+                        Practice These Words
+                    </button>
+                    <button 
+                        id="try-again-btn"
+                        class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold rounded transition"
+                    >
+                        Try Again
+                    </button>
+                </div>
+            `;
+        } else {
+            // If no errors, just show try again button
+            completionHTML += `
+                <button 
+                    class="mt-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold rounded transition"
+                    onclick="window.location.reload()"
+                >
+                    Try Again
+                </button>
+            `;
+        }
+        
+        completionMessage.innerHTML = completionHTML;
+        
+        // Add the message after the text display
+        textContainer.parentNode.appendChild(completionMessage);
+        
+        // Disable the text display
+        textDisplay.setAttribute('contenteditable', 'false');
+        textDisplay.style.opacity = '0.7';
+        
+        // Hide the cursor
+        cursor.style.display = 'none';
+        
+        // Add event listeners for the practice button if it exists
+        setTimeout(() => {
+            const practiceButton = document.getElementById('practice-mistakes-btn');
+            if (practiceButton) {
+                console.log("Adding click handler to practice button");
+                practiceButton.addEventListener('click', function() {
+                    console.log("Practice button clicked");
+                    generatePracticeText(Array.from(wordsWithErrors));
+                });
+            }
+            
+            // Add event listener for try again button if it exists
+            const tryAgainButton = document.getElementById('try-again-btn');
+            if (tryAgainButton) {
+                tryAgainButton.addEventListener('click', function() {
+                    window.location.reload();
+                });
+            }
+        }, 100);
+    }
+    
+    // Function to generate practice text with mistake words
+    function generatePracticeText(errorWords) {
+        console.log("Generating practice for words:", errorWords);
+        
+        // Show a loading indicator in the typing area
+        const typingArea = document.getElementById('typing-area');
+        typingArea.innerHTML = '<p class="text-center text-yellow-400">Generating practice text...</p>';
+        
+        // Create a request to generate practice text
+        fetch('/generate-practice', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                words: errorWords
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to generate practice text: ' + response.statusText);
+            }
+            return response.text();
+        })
+        .then(html => {
+            console.log("Received practice text HTML, length:", html.length);
+            
+            // Replace the typing area with the new practice text
+            typingArea.innerHTML = html;
+            
+            // Clear any existing completion messages
+            const existingCompletionMessage = document.querySelector('.bg-green-800');
+            if (existingCompletionMessage) {
+                existingCompletionMessage.remove();
+            }
+            
+            // Force reinitialize typing since we're not using htmx for this swap
+            // Use a longer timeout to ensure DOM is fully updated
+            setTimeout(() => {
+                console.log("Reinitializing typing after practice text generation");
+                
+                // Remove any existing cursor before reinitializing
+                const existingCursor = document.getElementById('typing-cursor');
+                if (existingCursor) {
+                    existingCursor.remove();
+                }
+                
+                // Reinitialize typing
+                initTyping();
+                
+                // Scroll to the typing area
+                typingArea.scrollIntoView({ behavior: 'smooth' });
+            }, 300);
+        })
+        .catch(error => {
+            console.error('Error generating practice text:', error);
+            typingArea.innerHTML = `
+                <div class="bg-red-800 p-4 rounded-lg text-white text-center">
+                    <p>Failed to generate practice text: ${error.message}</p>
+                    <button 
+                        class="mt-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold rounded transition"
+                        onclick="window.location.reload()"
+                    >
+                        Try Again
+                    </button>
+                </div>
+            `;
         });
     }
 } 

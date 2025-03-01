@@ -224,15 +224,26 @@ func (h *Handler) HandleGeneratePractice(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Generate a practice prompt
-	prompt := fmt.Sprintf("Create a typing practice paragraph that includes these words: %s. Make it flow naturally.",
+	// Create a more specific prompt that ensures each word appears multiple times
+	prompt := fmt.Sprintf(
+		"Create a typing practice paragraph that includes EACH of these words AT LEAST 10 TIMES: %s. "+
+			"Make sure each word appears multiple times throughout the text. "+
+			"The text should be coherent but focus on repeating these words frequently for practice.",
 		strings.Join(request.Words, ", "))
+
+	fmt.Printf("Generating practice with prompt: %s\n", prompt)
 
 	// Generate text using the LLM
 	content, err := h.Generator.GenerateText(prompt)
 	if err != nil {
 		http.Error(w, "Failed to generate practice text", http.StatusInternalServerError)
 		return
+	}
+
+	// Verify that each word appears multiple times
+	for _, word := range request.Words {
+		count := strings.Count(strings.ToLower(content), strings.ToLower(word))
+		fmt.Printf("Word '%s' appears %d times in generated text\n", word, count)
 	}
 
 	// Save the text to the database
